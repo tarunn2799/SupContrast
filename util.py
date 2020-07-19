@@ -53,10 +53,10 @@ class CatDogDataset(Dataset):
                 img = self.transform(img)
             if self.mode == 'train':
                 img = img.numpy()
-                return img.astype('float32'), self.label
+                return torch.tensor(img.astype('float32')), torch.tensor(self.label)
             else:
                 img = img.numpy()
-                return img.astype('float32'), self.file_list[idx]
+                return torch.tensor(img.astype('float32')), self.file_list[idx]
 
 def accuracy(output, target, topk=(1,)):
     """Computes the accuracy over the k top predictions for the specified values of k"""
