@@ -4,7 +4,7 @@ import math
 import numpy as np
 import torch
 import torch.optim as optim
-
+from torch.utils.data import Dataset, DataLoader, ConcatDataset
 
 class TwoCropTransform:
     """Create two crops of the same image"""
@@ -32,6 +32,31 @@ class AverageMeter(object):
         self.count += n
         self.avg = self.sum / self.count
 
+class CatDogDataset(Dataset):
+        def __init__(self, file_list, dir, mode='train', transform = None):
+            self.file_list = file_list
+            self.dir = dir
+            self.mode= mode
+            self.transform = transform
+            if self.mode == 'train':
+                if 'dog' in self.file_list[0]:
+                    self.label = 1
+                else:
+                    self.label = 0
+                
+        def __len__(self):
+            return len(self.file_list)
+        
+        def __getitem__(self, idx):
+            img = Image.open(os.path.join(self.dir, self.file_list[idx]))
+            if self.transform:
+                img = self.transform(img)
+            if self.mode == 'train':
+                img = img.numpy()
+                return img.astype('float32'), self.label
+            else:
+                img = img.numpy()
+                return img.astype('float32'), self.file_list[idx]
 
 def accuracy(output, target, topk=(1,)):
     """Computes the accuracy over the k top predictions for the specified values of k"""

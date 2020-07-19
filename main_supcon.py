@@ -12,11 +12,12 @@ import torch.backends.cudnn as cudnn
 from torchvision import transforms, datasets
 
 from util import TwoCropTransform, AverageMeter
+from util import CatDogDataset
 from util import adjust_learning_rate, warmup_learning_rate
 from util import set_optimizer, save_model
 from networks.resnet_big import SupConResNet
 from losses import SupConLoss
-
+from torch.utils.data import Dataset, DataLoader, ConcatDataset
 try:
     import apex
     from apex import amp, optimizers
@@ -37,7 +38,8 @@ def parse_option():
                         help='num of workers to use')
     parser.add_argument('--epochs', type=int, default=1000,
                         help='number of training epochs')
-
+    parser.add_argument('--data_dir', type=str, default= '' , 
+                        help= 'set the directory for dataset')
     # optimization
     parser.add_argument('--learning_rate', type=float, default=0.05,
                         help='learning rate')
@@ -117,39 +119,35 @@ def parse_option():
     return opt
 
 
+
 def set_loader(opt):
     # construct data loader
     if opt.dataset == 'cifar10':
-        mean = (0.4914, 0.4822, 0.4465)
-        std = (0.2023, 0.1994, 0.2010)
-    elif opt.dataset == 'cifar100':
-        mean = (0.5071, 0.4867, 0.4408)
-        std = (0.2675, 0.2565, 0.2761)
-    else:
-        raise ValueError('dataset not supported: {}'.format(opt.dataset))
+        mean = (0.485, 0.456, 0.406)
+        std = (0.229, 0.224, 0.225)
     normalize = transforms.Normalize(mean=mean, std=std)
+    # [0.485, 0.456, 0.406], [0.229, 0.224, 0.225] for Dogs vs Cats
+    # TODO write train_dataset for cvd --check utils
 
     train_transform = transforms.Compose([
-        transforms.RandomResizedCrop(size=32, scale=(0.2, 1.)),
+        transforms.RandomResizedCrop(size=256, scale=(0.2, 1.)),
         transforms.RandomHorizontalFlip(),
         transforms.RandomApply([
             transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)
         ], p=0.8),
         transforms.RandomGrayscale(p=0.2),
         transforms.ToTensor(),
-        normalize,
-    ])
+        normalize])
+        
+    train_dir= opt.data_dir
+    train_files= os.listdir(train_dir)
+    cat_files = [tf for tf in train_files if 'cat' in tf]
+    dog_files = [tf for tf in train_files if 'dog' in tf]
 
-    if opt.dataset == 'cifar10':
-        train_dataset = datasets.CIFAR10(root=opt.data_folder,
-                                         transform=TwoCropTransform(train_transform),
-                                         download=True)
-    elif opt.dataset == 'cifar100':
-        train_dataset = datasets.CIFAR100(root=opt.data_folder,
-                                          transform=TwoCropTransform(train_transform),
-                                          download=True)
-    else:
-        raise ValueError(opt.dataset)
+    cats = CatDogDataset(cat_files, train_dir, transform = TwoCropTransform(train_transform))
+    dogs = CatDogDataset(train_files, train_dir, transform = TwoCropTransform(train_transform))
+
+    train_dataset = ConcatDataset([cats, dogs])
 
     train_sampler = None
     train_loader = torch.utils.data.DataLoader(
