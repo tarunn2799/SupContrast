@@ -1,10 +1,11 @@
 from __future__ import print_function
-
+import os
 import math
 import numpy as np
 import torch
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader, ConcatDataset
+from PIL import Image
 
 class TwoCropTransform:
     """Create two crops of the same image"""
@@ -49,14 +50,15 @@ class CatDogDataset(Dataset):
         
         def __getitem__(self, idx):
             img = Image.open(os.path.join(self.dir, self.file_list[idx]))
-            if self.transform:
-                img = self.transform(img)
+            
             if self.mode == 'train':
-                img = img.numpy()
-                return torch.tensor(img.astype('float32')), torch.tensor(self.label)
+              if self.transform:
+                img = self.transform(img)
+                #img = img.numpy()
+                return img, self.label
             else:
-                img = img.numpy()
-                return torch.tensor(img.astype('float32')), self.file_list[idx]
+                #img = img.numpy()
+                return img, self.file_list[idx]
 
 def accuracy(output, target, topk=(1,)):
     """Computes the accuracy over the k top predictions for the specified values of k"""
