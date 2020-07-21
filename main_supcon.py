@@ -10,6 +10,7 @@ import tensorboard_logger as tb_logger
 import torch
 import torch.backends.cudnn as cudnn
 from torchvision import transforms, datasets
+from PIL import Image
 
 from util import TwoCropTransform, AverageMeter
 from util import CatDogDataset
@@ -130,7 +131,7 @@ def set_loader(opt):
     # TODO write train_dataset for cvd --check utils
 
     train_transform = transforms.Compose([
-        transforms.RandomResizedCrop(size=256, scale=(0.2, 1.)),
+        transforms.RandomResizedCrop(size=32, scale=(0.2, 1.)),
         transforms.RandomHorizontalFlip(),
         transforms.RandomApply([
             transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)
@@ -143,7 +144,7 @@ def set_loader(opt):
     train_files= os.listdir(train_dir)
     cat_files = [tf for tf in train_files if 'cat' in tf]
     dog_files = [tf for tf in train_files if 'dog' in tf]
-
+       
     cats = CatDogDataset(cat_files, train_dir, transform = TwoCropTransform(train_transform))
     dogs = CatDogDataset(train_files, train_dir, transform = TwoCropTransform(train_transform))
 
@@ -186,7 +187,7 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
     end = time.time()
     for idx, (images, labels) in enumerate(train_loader):
         data_time.update(time.time() - end)
-
+        
         images = torch.cat([images[0], images[1]], dim=0)
         images = images.cuda(non_blocking=True)
         labels = labels.cuda(non_blocking=True)
@@ -265,7 +266,7 @@ def main():
             save_file = os.path.join(
                 opt.save_folder, 'ckpt_epoch_{epoch}.pth'.format(epoch=epoch))
             save_model(model, optimizer, opt, epoch, save_file)
-
+    print(opt.save_folder)
     # save the last model
     save_file = os.path.join(
         opt.save_folder, 'last.pth')
